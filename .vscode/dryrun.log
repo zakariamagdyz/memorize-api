@@ -1,0 +1,5 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/mnt/hdd/Zakaria/practic/projects/MERN projects/URL-Shortener/server'
+docker-compose up --build
+make: Leaving directory '/mnt/hdd/Zakaria/practic/projects/MERN projects/URL-Shortener/server'
+ 

@@ -1,0 +1,359 @@
+import { NextFunction, Request, Response } from 'express';
+import { zodUserSchema } from '../schemas/auth.schema';
+import {
+  clearResetToken,
+  clearRTsForHackedUser,
+  createResetToken,
+  createUser,
+  deleteUserRT,
+  findUserBtResetToken,
+  findUserByEmail,
+  findUserByRT,
+  replaceRTToken,
+  updatePassword,
+} from '../services/auth.service';
+import catchAsync from '../utils/catchAsync';
+import HttpError from '../utils/customErrors';
+import { msgs, httpCode, selectFields } from '../utils/utlities';
+import config from 'config';
+import jwt from 'jsonwebtoken';
+import Email from '../utils/Email';
+import logger from '../utils/logger';
+import { IUserDocument, IUserInput } from '../utils/types/models';
+import { HydratedDocument } from 'mongoose';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+
+////////////////////////////////////////////////
+// Sign-up
+///////////////////////////////////////////////
+export const signupHandler = catchAsync(
+  async (req: Request<unknown, unknown, zodUserSchema>, res, next) => {
+    // 1- Select some specific fields from request body
+    const filterdUserinput = selectFields(req.body, [
+      'name',
+      'password',
+      'email',
+    ]);
+    // 2- Check if user email is exist in DB
+    const existedUser = await findUserByEmail(filterdUserinput.email);
+    // 3- if email belongs to existed user then throw an error
+    if (existedUser) {
+      return next(new HttpError(msgs.USER_EXIST, httpCode.BAD_REQUEST));
+    }
+    // 4- if user not exist then send The email
+    await sendWelcomeEmail(res, next, filterdUserinput);
+  }
+);
+
+const sendWelcomeEmail = async (
+  res: Response,
+  next: NextFunction,
+  user: IUserInput
+) => {
+  // 4- Create active token
+  const activateToken = jwt.sign(user, config.get('ACTIVE_TOKEN_SECRET'), {
+    expiresIn: config.get('ACTIVE_TOKEN_TTL'),
+  });
+
+  const emailUrl = `${config.get(
+    'CLIENT_URL'
+  )}/activate-account/${activateToken}`;
+  // 5- send email with a token holding user data
+  try {
+    await new Email(
+      {
+        firstName: user.name.split(' ')[0],
+        email: user.email,
+      },
+      emailUrl
+    ).sendWelcomeMail();
+    res.status(httpCode.OK).send(msgs.EMAIL_SUCCESS);
+  } catch (error) {
+    if (error instanceof Error) {
+      logger.error(error);
+      next(new HttpError(msgs.EMAIL_FAILURE, httpCode.SERVER_ERROR));
+    }
+  }
+};
+
+////////////////////////////////////////////////
+// Activate-account
+///////////////////////////////////////////////
+export const activateAccountHanlder = catchAsync(async (req, res) => {
+  // 1 - Check for activateToken
+  const { activateToken } = req.body;
+  // 2- Verify jwt token we handle errors globally
+  const userData = jwt.verify(activateToken, config.get('ACTIVE_TOKEN_SECRET'));
+
+  // 3- Create a user
+  const newUser = await createUser(userData as IUserInput);
+
+  // 4- Generate Tokens and send user data
+  await createTokensByCredentials(req, res, newUser);
+});
+
+////////////////////////////////////////////////
+// Generate-Tokens
+///////////////////////////////////////////////
+const generateTokens = async (
+  res: Response,
+  user: HydratedDocument<IUserDocument>,
+  oldToken?: string
+) => {
+  // 1- Prepare user data to sent
+  const userInfo = {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    roles: Object.values(user.roles).filter(Boolean),
+  };
+
+  // 2 - Create RT & AT
+  const RT = jwt.sign(userInfo, config.get('REFRESH_TOKEN_SECRET'), {
+    expiresIn: config.get('REFRESH_TOKEN_TTL'),
+  });
+
+  const AT = jwt.sign(userInfo, config.get('ACCESS_TOKEN_SECRET'), {
+    expiresIn: config.get('ACCESS_TOKEN_TTL'),
+  });
+
+  // 3- Replace the old token with the new one
+  await replaceRTToken({
+    user,
+    newToken: RT,
+    oldToken: oldToken,
+  });
+
+  // 4- Send Rt by cookie & AT, userData in json
+  res.cookie('jwt', RT, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production' ? true : false,
+    maxAge: config.get<number>('COOKIE_TOKEN_TTL') * 24 * 60 * 60 * 1000,
+  });
+  res.status(httpCode.OK).json({ acessToken: AT, user: userInfo });
+};
+
+////////////////////////////////////////////////
+// Create tokens based on credentials (login-activeateAcc-resetPassword-updatePassword)
+///////////////////////////////////////////////
+
+const createTokensByCredentials = async (
+  req: Request,
+  res: Response,
+  user: HydratedDocument<IUserDocument>
+) => {
+  // 1- Check if there is an old RT token (user reLogin)
+  const oldToken = req.cookies.jwt;
+  // 2- if no token , thats default generate new ones
+  if (!oldToken) {
+    return generateTokens(res, user);
+  }
+  // 3- if there is an old RT for the user, then remove it from DB & Cookie
+  await generateTokens(res, user, oldToken);
+};
+
+////////////////////////////////////////////////
+// Refresh Token Handler
+///////////////////////////////////////////////
+
+export const refreshTokenHandler = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const oldToken = req.cookies.jwt;
+    // 1- Check if there's no token, set No credentials sent
+    if (!oldToken)
+      return next(new HttpError(msgs.COOKIE_NOT_FOUND, httpCode.UNAUTHORIZED));
+    // 2- Find user by RT
+    const relatedUser = await findUserByRT(oldToken);
+
+    // 1- If no user found , then that a reuse detection (Old removed token)
+    if (!relatedUser) {
+      return fireReuseDetection(res, next, oldToken);
+    }
+    // 2- If user found, then verify the token
+    return handleOldRT(res, next, relatedUser, oldToken);
+  }
+);
+
+const fireReuseDetection = async (
+  res: Response,
+  next: NextFunction,
+  oldToken: string
+) => {
+  try {
+    // 1- Get user Data
+    const decoded = jwt.verify(
+      oldToken,
+      config.get('REFRESH_TOKEN_SECRET')
+    ) as IUserDocument;
+
+    // 2- Clear all Rts if user exist
+    await clearRTsForHackedUser(decoded.email);
+
+    // 3- Clear Cookie to not go in reuse loop
+    res.clearCookie('jwt');
+    // 4- return an error message
+    return next(new HttpError(msgs.COOKIE_NOT_FOUND, httpCode.UNAUTHORIZED));
+  } catch (error) {
+    if (!(error instanceof Error)) return;
+
+    return next(new HttpError(error.message, httpCode.BAD_REQUEST));
+  }
+};
+
+const handleOldRT = async (
+  res: Response,
+  next: NextFunction,
+  user: HydratedDocument<IUserDocument>,
+  oldToken: string
+) => {
+  let userDecoded: IUserInput;
+  try {
+    // Check if token not expired to generate a new one
+    userDecoded = jwt.verify(
+      oldToken,
+      config.get('REFRESH_TOKEN_SECRET')
+    ) as IUserInput;
+
+    //  generate new tokens
+    if (userDecoded.name !== user.name) return;
+
+    return await generateTokens(res, user, oldToken);
+  } catch (error) {
+    // Malformed Error or expiration Error
+    // If token throw an error return http error for invalid credentals
+    if (!(error instanceof Error)) return;
+    // Delete the old token from Cookie and DB
+    await deleteRTFromDBAndCookie(res, user, oldToken);
+
+    return next(new HttpError(msgs.COOKIE_NOT_VALID, httpCode.UNAUTHORIZED));
+  }
+};
+
+const deleteRTFromDBAndCookie = async (
+  res: Response,
+  user: HydratedDocument<IUserDocument>,
+  oldToken: string
+) => {
+  await deleteUserRT(user, oldToken);
+  res.clearCookie('jwt');
+};
+
+////////////////////////////////////////////////
+// Login Handler
+///////////////////////////////////////////////
+export const loginHandler = catchAsync(async (req, res, next) => {
+  // 1- get email and password in body
+  const { email, password } = req.body;
+  // 2- Check if user exist in DB by email
+  const existedUser = await findUserByEmail(email);
+  if (!existedUser)
+    return next(new HttpError(msgs.LOGIN_FAILURE, httpCode.UNAUTHORIZED));
+  // 3- Check for password equality
+  if (!(await bcrypt.compare(password, existedUser.password))) {
+    return next(new HttpError(msgs.LOGIN_FAILURE, httpCode.UNAUTHORIZED));
+  }
+  // 4- generate ans sent tokens
+  await createTokensByCredentials(req, res, existedUser);
+});
+
+////////////////////////////////////////////////
+// Forgot Password Handler
+///////////////////////////////////////////////
+export const forgotPasswordHandler = catchAsync(async (req, res, next) => {
+  // 1- Check for email in body
+  const { email } = req.body;
+  // 2- check if user exists in DB by email
+  const user = await findUserByEmail(email);
+  if (!user)
+    return next(new HttpError(msgs.EMAIL_NOT_FOUND, httpCode.BAD_REQUEST));
+  // 3- create Reset token with expiration data and save hashed version in DB
+  const resetToken = await createResetToken(user);
+
+  // 4- send the plain Reset token in email
+  await sendResetPasswordMail(res, next, user, resetToken);
+});
+
+const sendResetPasswordMail = async (
+  res: Response,
+  next: NextFunction,
+  user: HydratedDocument<IUserDocument>,
+  resetToken: string
+) => {
+  const url = `${config.get('CLIENT_URL')}/resetPassword/${resetToken}`;
+
+  try {
+    new Email(
+      { firstName: user.name.split(' ')[0], email: user.email },
+      url
+    ).sendResetPasswordMail();
+
+    res.status(httpCode.OK).send(msgs.EMAIL_SUCCESS);
+  } catch (error) {
+    if (!(error instanceof Error)) return;
+    await clearResetToken(user);
+    return next(new HttpError(msgs.EMAIL_FAILURE, httpCode.SERVER_ERROR));
+  }
+};
+
+////////////////////////////////////////////////
+// Reset password Handler
+///////////////////////////////////////////////
+export const resetPasswordHandler = catchAsync(async (req, res, next) => {
+  // 1- Check for resetToken in body
+  const { password } = req.body;
+  const resetToken = req.params.resetToken;
+  // 2- Hash the reset token we've got (one way encryption)
+  const hashedResetToekn = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  // 3- Find hasedToken with expiration date in DB
+  const user = await findUserBtResetToken(hashedResetToekn);
+  if (!user)
+    return next(new HttpError(msgs.RESET_TOKEN_FAILURE, httpCode.BAD_REQUEST));
+  // 4-update password and remove resetToken and expiration date
+  await updatePassword(user, password);
+  // 5- generate Tokens and send to user
+  await createTokensByCredentials(req, res, user);
+});
+////////////////////////////////////////////////
+// Logout  Handler
+///////////////////////////////////////////////
+export const logoutHandler = catchAsync(async (req, res, next) => {
+  // 1- Check for RT in cookie
+  const RT = req.cookies.jwt;
+  if (!RT)
+    return next(new HttpError(msgs.COOKIE_NOT_FOUND, httpCode.UNAUTHORIZED));
+  // 2- Find user by RT
+  const relatedUser = await findUserByRT(RT);
+
+  if (!relatedUser) {
+    res.clearCookie('jwt');
+    return res.sendStatus(200);
+  }
+  // 2- remove it from DB and from cookie
+  await deleteRTFromDBAndCookie(res, relatedUser, RT);
+  // 3- return statusCode 200
+  return res.sendStatus(200);
+});
+
+////////////////////////////////////////////////
+// Update password  Handler
+///////////////////////////////////////////////
+export const updatePasswordHandler = catchAsync(async (req, res, next) => {
+  // 1- Check for oldPassword in body
+  const { currentPassword, newPassword } = req.body;
+  // 2- get user by it's email
+  const existedUser = await findUserByEmail(res.locals?.user?.email);
+  if (!existedUser)
+    return next(new HttpError(msgs.EMAIL_NOT_FOUND, httpCode.BAD_REQUEST));
+  // 3- compare two passwords
+  if (!(await bcrypt.compare(currentPassword, existedUser.password))) {
+    return next(new HttpError(msgs.UPDATE_PASS_FAILURE, httpCode.BAD_REQUEST));
+  }
+  // 3- update passwords
+  await updatePassword(existedUser, newPassword);
+  // 4- generate tokens and sent it
+  await createTokensByCredentials(req, res, existedUser);
+});
