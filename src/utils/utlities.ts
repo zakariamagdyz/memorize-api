@@ -11,6 +11,10 @@ export const msgs = {
     'This user already exist, visit /forgotpassword to reset your password.',
   RESET_TOKEN_FAILURE: 'Invalid or expired token',
   UPDATE_PASS_FAILURE: 'The current password is incorrect',
+  NOT_LOGGED_IN: 'You are not logged in, Please login to get access',
+  ROLE_ERROR: "You don't have permission to perform this action",
+  UPGRADE_AT:
+    'Your access token has expired , Please upgrade it with your refresh token',
 };
 
 export const httpCode = {
@@ -21,6 +25,7 @@ export const httpCode = {
   ACCEPTED: 201,
   OK: 200,
   NO_CONTENT: 204,
+  UPGRADE_AT: 426,
 };
 
 export const selectFields = <T>(obj: T, fields: (keyof T)[]) => {
