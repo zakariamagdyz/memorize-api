@@ -6,8 +6,11 @@ import {
   getOneProduct,
   updateOneProduct,
 } from '../controllers/prodcut.controller';
+import protectRoutes from '../middlewares/protectRoutes';
 import validate from '../middlewares/validateResource';
+import verifyRoles from '../middlewares/verifyRole';
 import { productSchema } from '../schemas/product.schema';
+import { roles } from '../utils/utlities';
 
 // docs
 
@@ -49,9 +52,13 @@ import { productSchema } from '../schemas/product.schema';
 
 const Router = express.Router();
 
+Router.use(protectRoutes);
+
 Router.route('/')
   .get(getAllProducts)
   .post(validate(productSchema), createOneProduct);
+
+Router.use(verifyRoles(roles.Admin));
 
 Router.route('/:id')
   .get(getOneProduct)

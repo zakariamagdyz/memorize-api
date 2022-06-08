@@ -95,7 +95,7 @@ describe('Pagintation Info', () => {
       count: 30,
       pages: 2,
       limit: 20,
-      next: `${config.get('API_URL')}/api/users?page=2&limit=20`,
+      next: `${config.get('API_URL')}/api/v1/users?page=2&limit=20`,
       prev: null,
     });
   });
@@ -111,8 +111,8 @@ describe('Pagintation Info', () => {
       count: 30,
       pages: 4,
       limit: 8,
-      next: `${config.get('API_URL')}/api/users?page=3&limit=8`,
-      prev: `${config.get('API_URL')}/api/users?page=1&limit=8`,
+      next: `${config.get('API_URL')}/api/v1/users?page=3&limit=8`,
+      prev: `${config.get('API_URL')}/api/v1/users?page=1&limit=8`,
     });
   });
 });

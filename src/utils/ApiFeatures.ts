@@ -1,4 +1,4 @@
-import { pagination } from './rolesList';
+import { pagination } from './utlities';
 import { IApiQuery, IAPIQueryString } from './types/utilites';
 
 export default class ApiFeatures<T> {

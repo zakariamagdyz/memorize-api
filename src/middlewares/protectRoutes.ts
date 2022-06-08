@@ -13,7 +13,10 @@ const protectRoutes = catchAsync(async (req, res, next) => {
   }
   // 3- Verify AT
   try {
-    const decoded = jwt.verify(authHeader, config.get('ACCESS_TOKEN_SECRET'));
+    const decoded = jwt.verify(
+      authHeader.split(' ')[1],
+      config.get('ACCESS_TOKEN_SECRET')
+    );
     // 4- Move to next Middlware
     res.locals.user = decoded;
     next();

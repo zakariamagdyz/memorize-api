@@ -38,7 +38,7 @@ const handleNotFoundError = (err: any) => {
 };
 // JWT ERRORS
 const handleJwtError = () =>
-  new HttpError('Invalid token. Please logIn again!', httpCode.UNAUTHORIZED);
+  new HttpError('Invalid token. Please login again!', httpCode.UNAUTHORIZED);
 
 const handleJWTExpired = () =>
   new HttpError(
@@ -97,8 +97,8 @@ export default function (
     HttpError = handleNotFoundError(HttpError);
   if (HttpError.name === 'ZodError') HttpError = handleZodError(HttpError);
   if (HttpError.code === 11000) HttpError = handleDuplicateErrorDB(HttpError);
-  if (HttpError.code === 'JsonWebTokenError') HttpError = handleJwtError();
-  if (HttpError.code === 'TokenExpiredError') HttpError = handleJWTExpired();
+  if (HttpError.name === 'JsonWebTokenError') HttpError = handleJwtError();
+  if (HttpError.name === 'TokenExpiredError') HttpError = handleJWTExpired();
 
   new WinstonLogger('prod-errors').error(HttpError.message, HttpError);
 

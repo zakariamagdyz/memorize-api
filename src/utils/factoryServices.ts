@@ -1,8 +1,7 @@
 import config from 'config';
 import ApiFeatures from './ApiFeatures';
 import { ServiceError } from './customErrors';
-import { pagination } from './rolesList';
-import { selectFields } from './utlities';
+import { selectFields, pagination } from './utlities';
 import {
   pagintationInfo,
   TCreateOneService,
@@ -45,13 +44,13 @@ export const addPaginationInfo: TPaginationInfo = ({
     prev: null,
   };
   if (startIndex > 0) {
-    state.prev = `${config.get<string>('API_URL')}/api/${ModelName}?page=${
+    state.prev = `${config.get<string>('API_URL')}/api/v1/${ModelName}?page=${
       page - 1
     }&limit=${limit}`;
   }
 
   if (lastIndex < docCounts) {
-    state.next = `${config.get<string>('API_URL')}/api/${ModelName}?page=${
+    state.next = `${config.get<string>('API_URL')}/api/v1/${ModelName}?page=${
       page + 1
     }&limit=${limit}`;
   }

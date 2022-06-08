@@ -28,6 +28,17 @@ export const httpCode = {
   UPGRADE_AT: 426,
 };
 
+export const roles = {
+  Admin: 2000,
+  User: 2001,
+  Editor: 2003,
+};
+
+export const pagination = {
+  page: 1,
+  limit: 20,
+};
+
 export const selectFields = <T>(obj: T, fields: (keyof T)[]) => {
   const newObj = {} as T;
   let k: keyof T;

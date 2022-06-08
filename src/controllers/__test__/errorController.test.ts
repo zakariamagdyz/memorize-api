@@ -10,7 +10,6 @@ type TerrorParams = {
 };
 
 const errrorParams = {
-  err: {},
   req: {},
   res: {
     status: jest.fn(),
@@ -80,8 +79,8 @@ describe('send error for production environment', () => {
 
   it('should handle ZodErrors', () => {
     const { req, res, next } = errrorParams;
-    errrorParams.err = new Error('error');
-    const zodError = Object.assign(errrorParams.err, {
+    const error = new Error('error');
+    const zodError = Object.assign(error, {
       name: 'ZodError',
       errors: [{ message: 'zodError_1' }, { message: 'zodError_2' }],
     });
@@ -101,8 +100,8 @@ describe('send error for production environment', () => {
 
   it('should handle ValidationErrorDB', () => {
     const { req, res, next } = errrorParams;
-    errrorParams.err = new Error('error');
-    const ValidationError = Object.assign(errrorParams.err, {
+    const error = new Error('error');
+    const ValidationError = Object.assign(error, {
       name: 'ValidationError',
       errors: {
         err1: { message: 'validation_1' },
@@ -125,8 +124,8 @@ describe('send error for production environment', () => {
 
   it('should handle CastErrorDB', () => {
     const { req, res, next } = errrorParams;
-    errrorParams.err = new Error('error');
-    const CastErrorDB = Object.assign(errrorParams.err, {
+    const error = new Error('error');
+    const CastErrorDB = Object.assign(error, {
       name: 'CastError',
       path: 'id',
       value: '123d',
@@ -147,8 +146,8 @@ describe('send error for production environment', () => {
 
   it('should handle DuplicateErrorDB', () => {
     const { req, res, next } = errrorParams;
-    errrorParams.err = new Error('error');
-    const DuplicateErrorDB = Object.assign(errrorParams.err, {
+    const error = new Error('error');
+    const DuplicateErrorDB = Object.assign(error, {
       code: 11000,
       keyValue: {
         name: 'email',
@@ -182,6 +181,56 @@ describe('send error for production environment', () => {
     expect(res.json).toHaveBeenCalledWith({
       status: 'fail',
       message: 'Doc not found',
+    });
+  });
+
+  it('should handle jwt invalid error ', () => {
+    const { req, res, next } = errrorParams;
+    const error = new Error('InvalidToken. Please login again!');
+    const err = Object.assign(error, { name: 'JsonWebTokenError' });
+
+    errorHandler(err, req, res, next);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledTimes(400);
+
+    expect(res.json).toHaveBeenCalledWith({
+      status: 'fail',
+      message: 'invalid token, please login again!',
+    });
+  });
+
+  it('should handle jwt invalid error ', () => {
+    const { req, res, next } = errrorParams;
+    const errorMsg = 'Invalid token. Please login again!';
+    const error = new Error(errorMsg);
+    const err = Object.assign(error, { name: 'JsonWebTokenError' });
+
+    errorHandler(err, req, res, next);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(401);
+
+    expect(res.json).toHaveBeenCalledWith({
+      status: 'fail',
+      message: errorMsg,
+    });
+  });
+
+  it('should handle jwt expiration error ', () => {
+    const { req, res, next } = errrorParams;
+    const errMag = 'Your token has expired. Please log in again!';
+    const error = new Error(errMag);
+    const err = Object.assign(error, { name: 'TokenExpiredError' });
+
+    errorHandler(err, req, res, next);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(401);
+
+    expect(res.json).toHaveBeenCalledWith({
+      status: 'fail',
+      message: errMag,
     });
   });
 });

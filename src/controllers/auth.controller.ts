@@ -6,7 +6,7 @@ import {
   createResetToken,
   createUser,
   deleteUserRT,
-  findUserBtResetToken,
+  findUserByResetToken,
   findUserByEmail,
   findUserByRT,
   replaceRTToken,
@@ -131,7 +131,7 @@ const generateTokens = async (
     secure: process.env.NODE_ENV === 'production' ? true : false,
     maxAge: config.get<number>('COOKIE_TOKEN_TTL') * 24 * 60 * 60 * 1000,
   });
-  res.status(httpCode.OK).json({ acessToken: AT, user: userInfo });
+  res.status(httpCode.OK).json({ accessToken: AT, user: userInfo });
 };
 
 ////////////////////////////////////////////////
@@ -309,7 +309,7 @@ export const resetPasswordHandler = catchAsync(async (req, res, next) => {
     .update(resetToken)
     .digest('hex');
   // 3- Find hasedToken with expiration date in DB
-  const user = await findUserBtResetToken(hashedResetToekn);
+  const user = await findUserByResetToken(hashedResetToekn);
   if (!user)
     return next(new HttpError(msgs.RESET_TOKEN_FAILURE, httpCode.BAD_REQUEST));
   // 4-update password and remove resetToken and expiration date

@@ -9,6 +9,7 @@ import {
   signupHandler,
   updatePasswordHandler,
 } from '../controllers/auth.controller';
+import protectRoutes from '../middlewares/protectRoutes';
 import validate from '../middlewares/validateResource';
 import {
   activateAccountSchema,
@@ -47,6 +48,7 @@ Router.patch(
 );
 Router.patch(
   '/update-my-password',
+  protectRoutes,
   validate(updatePasswordSchema),
   updatePasswordHandler
 );

@@ -2,6 +2,7 @@ import User from '../models/user.model';
 import { HydratedDocument } from 'mongoose';
 import { IUserInput, IUserDocument } from '../utils/types/models';
 import { TReplaceRTToken } from '../utils/types/service';
+import crypto from 'crypto';
 
 //////////////////////////////////////////
 // Create a new User
@@ -56,7 +57,7 @@ export const replaceRTToken: TReplaceRTToken = async ({
 
 export const clearRTsForHackedUser = async (email: IUserDocument['email']) => {
   const hackedUser = await findUserByEmail(email);
-  if (!hackedUser) return;
+  if (!hackedUser) return null;
   hackedUser.refreshTokens = [];
   await hackedUser.save();
 };
@@ -80,9 +81,17 @@ export const deleteUserRT = async (
 export const createResetToken = async (
   user: HydratedDocument<IUserDocument>
 ) => {
-  const plainToken = user.createPasswordResetToken();
+  // plan token to send by email
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  // hashed token to verify when get plain token by user
+  const HashedResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  user.passwordResetToken = HashedResetToken;
+  user.passwordResetTokenExpiration = new Date(Date.now() + 10 * 60 * 1000);
   await user.save();
-  return plainToken;
+  return resetToken;
 };
 //////////////////////////////////////////
 // Clear Reset Token
@@ -97,7 +106,7 @@ export const clearResetToken = async (
 //////////////////////////////////////////
 // Find user by reset token
 //////////////////////////////////////////
-export const findUserBtResetToken = async (hashedToken: string) => {
+export const findUserByResetToken = async (hashedToken: string) => {
   return await User.findOne({
     passwordResetToken: hashedToken,
     passwordResetTokenExpiration: { $gte: Date.now() },

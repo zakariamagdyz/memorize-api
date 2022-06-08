@@ -30,6 +30,7 @@ const expressMiddlewareParams = {
 };
 
 import jwt from 'jsonwebtoken';
+import { msgs } from '../../utils/utlities';
 describe('signup handler', () => {
   it('should send email if user does not exist', async () => {
     const { req, res, next } = expressMiddlewareParams;
@@ -69,10 +70,7 @@ describe('signup handler', () => {
     expect(jwt.sign).toHaveBeenCalledTimes(1);
 
     expect(HttpError).toHaveBeenCalledTimes(1);
-    expect(HttpError).toHaveBeenCalledWith(
-      'Somthing wet wrong while sending email',
-      500
-    );
+    expect(HttpError).toHaveBeenCalledWith(msgs.EMAIL_FAILURE, 500);
   });
 
   it('should throw an error if user exists', async () => {
@@ -81,13 +79,10 @@ describe('signup handler', () => {
     //@ts-ignore
     authService.findUserByEmail.mockReturnValue(req.body);
 
-    const msg =
-      'This user already exist, visit /forgotpassword to reset your password';
-
     await signupHandler(req, res, next);
     expect(authService.findUserByEmail).toHaveBeenCalledTimes(1);
     expect(authService.findUserByEmail).toHaveBeenCalledWith(req.body.email);
     expect(HttpError).toHaveBeenCalledTimes(1);
-    expect(HttpError).toHaveBeenCalledWith(msg, 400);
+    expect(HttpError).toHaveBeenCalledWith(msgs.USER_EXIST, 400);
   });
 });

@@ -2,7 +2,6 @@ import mongoose, { HydratedDocument } from 'mongoose';
 import { IUserDocument } from '../utils/types/models';
 
 import bcrypt from 'bcrypt';
-import crypto from 'crypto';
 
 const userSchema = new mongoose.Schema(
   {
@@ -44,20 +43,5 @@ userSchema.pre(/^find/, function (next) {
   this.find({ active: { $ne: false } });
   next();
 });
-
-userSchema.methods.createPasswordResetToken = async function (
-  this: HydratedDocument<IUserDocument>
-) {
-  // plan token to send by email
-  const resetToken = crypto.randomBytes(32).toString('hex');
-  // hashed token to verify when get plain token by user
-  const HashedResetToken = crypto
-    .createHash('sha256')
-    .update(resetToken)
-    .digest('hex');
-  this.passwordResetToken = HashedResetToken;
-  this.passwordResetTokenExpiration = new Date(Date.now() + 10 * 60 * 1000);
-  return resetToken;
-};
 
 export default mongoose.model<IUserDocument>('User', userSchema);
