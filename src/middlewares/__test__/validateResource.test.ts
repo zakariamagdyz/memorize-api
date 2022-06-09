@@ -1,20 +1,17 @@
 import { AnyZodObject } from 'zod';
-import { Request, Response, NextFunction } from 'express';
 import validate from '../validateResource';
 
 const expressParams = {
   req: {},
   res: {},
   next: jest.fn(),
-} as unknown as {
-  res: Response;
-  req: Request;
-  next: NextFunction;
 };
 const schema = { parse: jest.fn() } as unknown as AnyZodObject;
 describe('ValidateResource', () => {
   it('should goTo next middleware if schema parsed correctly', () => {
     const { req, res, next } = expressParams;
+    //eslint-disable-next-line
+    //@ts-ignore
     validate(schema)(req, res, next);
 
     expect(schema.parse).toHaveBeenCalledTimes(1);
@@ -26,6 +23,8 @@ describe('ValidateResource', () => {
       throw { name: 'ZodError' };
     });
     const { req, res, next } = expressParams;
+    //eslint-disable-next-line
+    //@ts-ignore
     validate(schema)(req, res, next);
 
     expect(schema.parse).toHaveBeenCalledTimes(1);

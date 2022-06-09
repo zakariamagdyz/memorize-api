@@ -36,6 +36,13 @@ describe('send error for development environment', () => {
     expect(res.status).toHaveBeenCalledTimes(1);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'dev Error',
+        statusCode: 400,
+        stack: expect.any(String),
+      })
+    );
   });
 });
 
@@ -181,22 +188,6 @@ describe('send error for production environment', () => {
     expect(res.json).toHaveBeenCalledWith({
       status: 'fail',
       message: 'Doc not found',
-    });
-  });
-
-  it('should handle jwt invalid error ', () => {
-    const { req, res, next } = errrorParams;
-    const error = new Error('InvalidToken. Please login again!');
-    const err = Object.assign(error, { name: 'JsonWebTokenError' });
-
-    errorHandler(err, req, res, next);
-
-    expect(res.status).toHaveBeenCalledTimes(1);
-    expect(res.status).toHaveBeenCalledTimes(400);
-
-    expect(res.json).toHaveBeenCalledWith({
-      status: 'fail',
-      message: 'invalid token, please login again!',
     });
   });
 

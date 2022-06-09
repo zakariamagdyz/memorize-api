@@ -96,7 +96,7 @@ export const activateAccountHanlder = catchAsync(async (req, res) => {
 ////////////////////////////////////////////////
 // Generate-Tokens
 ///////////////////////////////////////////////
-const generateTokens = async (
+export const generateTokens = async (
   res: Response,
   user: HydratedDocument<IUserDocument>,
   oldToken?: string
@@ -138,7 +138,7 @@ const generateTokens = async (
 // Create tokens based on credentials (login-activeateAcc-resetPassword-updatePassword)
 ///////////////////////////////////////////////
 
-const createTokensByCredentials = async (
+export const createTokensByCredentials = async (
   req: Request,
   res: Response,
   user: HydratedDocument<IUserDocument>
@@ -175,7 +175,7 @@ export const refreshTokenHandler = catchAsync(
   }
 );
 
-const fireReuseDetection = async (
+export const fireReuseDetection = async (
   res: Response,
   next: NextFunction,
   oldToken: string
@@ -201,7 +201,7 @@ const fireReuseDetection = async (
   }
 };
 
-const handleOldRT = async (
+export const handleOldRT = async (
   res: Response,
   next: NextFunction,
   user: HydratedDocument<IUserDocument>,
@@ -230,7 +230,7 @@ const handleOldRT = async (
   }
 };
 
-const deleteRTFromDBAndCookie = async (
+export const deleteRTFromDBAndCookie = async (
   res: Response,
   user: HydratedDocument<IUserDocument>,
   oldToken: string

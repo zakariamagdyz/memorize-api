@@ -52,7 +52,7 @@ const sendErrorForDev = (HttpError: IHttpError, res: Response) => {
   res.status(HttpError.statusCode);
   res.json({
     status: HttpError.status,
-    statuCode: HttpError.statusCode,
+    statusCode: HttpError.statusCode,
     message: HttpError.message,
     stack: HttpError.stack,
   });

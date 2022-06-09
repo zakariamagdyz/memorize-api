@@ -16,7 +16,16 @@ import ApiFeatures from '../ApiFeatures';
 //eslint-disable-next-line
 let mockModel: Model<IUserForTest>;
 
-jest.mock('../ApiFeatures');
+jest.mock('../ApiFeatures', () => {
+  return jest.fn().mockImplementation(() => {
+    return {
+      sorting: jest.fn().mockReturnThis(),
+      filter: jest.fn().mockReturnThis(),
+      pagination: jest.fn().mockReturnThis(),
+      limitingFields: jest.fn().mockReturnThis(),
+    };
+  });
+});
 
 beforeAll(() => {
   mockModel = {
@@ -120,14 +129,7 @@ describe('Pagintation Info', () => {
 describe('Get All Products Services', () => {
   it('should run successfully without parentField & parentId', async () => {
     const query = {};
-    //eslint-disable-next-line
-    //@ts-ignore
-    ApiFeatures.mockImplementation(() => ({
-      sorting: jest.fn().mockReturnThis(),
-      filter: jest.fn().mockReturnThis(),
-      pagination: jest.fn().mockReturnThis(),
-      limitingFields: jest.fn().mockReturnThis(),
-    }));
+
     //eslint-disable-next-line
     //@ts-ignore
     addPaginationInfo = jest.fn();
@@ -140,14 +142,7 @@ describe('Get All Products Services', () => {
 
   it('should run successfully with parentField & parentId', async () => {
     const query = { tourId: '123' };
-    //eslint-disable-next-line
-    //@ts-ignore
-    ApiFeatures.mockImplementation(() => ({
-      sorting: jest.fn().mockReturnThis(),
-      filter: jest.fn().mockReturnThis(),
-      pagination: jest.fn().mockReturnThis(),
-      limitingFields: jest.fn().mockReturnThis(),
-    }));
+
     //eslint-disable-next-line
     //@ts-ignore
     addPaginationInfo = jest.fn();
