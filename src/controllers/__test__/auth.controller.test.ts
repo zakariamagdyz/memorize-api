@@ -6,24 +6,33 @@ import {
   fireReuseDetection,
   generateTokens,
   handleOldRT,
+  loginHandler,
+  refreshTokenHandler,
+  sendResetPasswordMail,
   signupHandler,
 } from '../auth.controller';
+import config from 'config';
 import HttpError from '../../utils/customErrors';
 import Email from '../../utils/Email';
 import jwt from 'jsonwebtoken';
 import { httpCode, msgs } from '../../utils/utlities';
+import bcrypt from 'bcrypt';
 
 // mock auth service and Http error
+jest.mock('bcrypt');
 jest.mock('../../services/auth.service.ts');
 jest.mock('../../utils/customErrors');
+// Email mocked moudle
+const mockedSendRT = jest.fn().mockRejectedValue(new Error('Async error'));
 jest.mock('../../utils/Email.ts', () => {
   return jest.fn().mockImplementation(() => {
     return {
       sendWelcomeMail: jest.fn().mockRejectedValue(new Error('Async error')),
+      sendResetPasswordMail: mockedSendRT,
     };
   });
 });
-
+// this is mocking for jsonweb token module
 jest.mock('jsonwebtoken', () => {
   return {
     sign: jest.fn().mockReturnValue('hash123'),
@@ -392,5 +401,180 @@ describe('deleteRTFromDBAndCookie', () => {
     expect(res.clearCookie).toHaveBeenCalledTimes(1);
     expect(res.clearCookie).toHaveBeenCalledWith('jwt');
     expect(authService.deleteUserRT).toHaveBeenCalledWith(user, oldToken);
+  });
+});
+
+describe('refreshTokenHandler', () => {
+  it('should throw an error if there is no cookie token', async () => {
+    const { req, res, next } = expressMiddlewareParams;
+    //eslint-disable-next-line
+    //@ts-ignore
+    req.cookies = {};
+    //eslint-disable-next-line
+    //@ts-ignore
+    await refreshTokenHandler(req, res, next);
+
+    expect(HttpError).toHaveBeenCalledTimes(1);
+    expect(HttpError).toHaveBeenCalledWith(
+      msgs.COOKIE_NOT_FOUND,
+      httpCode.UNAUTHORIZED
+    );
+  });
+
+  it('should replace old RT with new One', async () => {
+    const { req, res, next } = expressMiddlewareParams;
+    const user = { name: 'John', email: 'email@example.com' };
+    //eslint-disable-next-line
+    //@ts-ignore
+    authService.findUserByRT = jest.fn().mockReturnValue(user);
+
+    //eslint-disable-next-line
+    //@ts-ignore
+    req.cookies = { jwt: '123' };
+    //eslint-disable-next-line
+    //@ts-ignore
+    handleOldRT = jest.fn();
+    //eslint-disable-next-line
+    //@ts-ignore
+    await refreshTokenHandler(req, res, next);
+
+    expect(authService.findUserByRT).toHaveBeenCalledTimes(1);
+    expect(authService.findUserByRT).toHaveBeenCalledWith('123');
+    expect(handleOldRT).toHaveBeenCalledTimes(1);
+    expect(handleOldRT).toHaveBeenCalledWith(res, next, user, '123');
+  });
+
+  it('should fire reuse detection if rt not belongs to a user', async () => {
+    const { req, res, next } = expressMiddlewareParams;
+    jest.mocked(authService.findUserByRT).mockReset();
+    //eslint-disable-next-line
+    //@ts-ignore
+    fireReuseDetection = jest.fn();
+    //eslint-disable-next-line
+    //@ts-ignore
+    req.cookies = { jwt: '123' };
+
+    //eslint-disable-next-line
+    //@ts-ignore
+    await refreshTokenHandler(req, res, next);
+
+    expect(fireReuseDetection).toHaveBeenCalledTimes(1);
+    expect(fireReuseDetection).toHaveBeenCalledWith(res, next, '123');
+  });
+});
+////////////////////////////////////////////////
+// login  Handler
+///////////////////////////////////////////////
+describe('loginHandler', () => {
+  it('should throw an error if no user found in DB', async () => {
+    const { req, res, next } = expressMiddlewareParams;
+    //eslint-disable-next-line
+    //@ts-ignore
+    await loginHandler(req, res, next);
+
+    expect(HttpError).toHaveBeenCalledTimes(1);
+    expect(HttpError).toHaveBeenCalledWith(
+      msgs.LOGIN_FAILURE,
+      httpCode.UNAUTHORIZED
+    );
+  });
+  it("should throw an error if passwords doen't match", async () => {
+    const { req, res, next } = expressMiddlewareParams;
+    //eslint-disable-next-line
+    //@ts-ignore
+    authService.findUserByEmail = jest
+      .fn()
+      .mockReturnValue({ name: 'zakaria', password: 'password' });
+    //eslint-disable-next-line
+    //@ts-ignore
+    await loginHandler(req, res, next);
+
+    expect(bcrypt.compare).toHaveBeenCalled();
+    expect(HttpError).toHaveBeenCalled();
+    expect(HttpError).toHaveBeenCalledWith(
+      msgs.LOGIN_FAILURE,
+      httpCode.UNAUTHORIZED
+    );
+  });
+
+  it('should generate tokens if all is good', async () => {
+    const { req, res, next } = expressMiddlewareParams;
+    const mocked = jest.mocked(bcrypt);
+    //eslint-disable-next-line
+    //@ts-ignore
+    mocked.compare.mockReturnValue(true);
+    //eslint-disable-next-line
+    //@ts-ignore
+    authService.findUserByEmail = jest
+      .fn()
+      .mockReturnValue({ name: 'zakaria', password: 'password' });
+
+    //eslint-disable-next-line
+    //@ts-ignore
+    createTokensByCredentials = jest.fn();
+    //eslint-disable-next-line
+    //@ts-ignore
+    await loginHandler(req, res, next);
+
+    expect(bcrypt.compare).toHaveBeenCalled();
+    expect(createTokensByCredentials).toHaveBeenCalled();
+  });
+});
+////////////////////////////////////////////////
+// forgot password Handler
+///////////////////////////////////////////////
+describe('sendResetPasswordMail', () => {
+  it('should send mail if no error happend', async () => {
+    const { res, next } = expressMiddlewareParams;
+    const user = { name: 'John', email: 'mail@example.com' };
+    const url = `${config.get('CLIENT_URL')}/resetPassword/resetToken`;
+    //eslint-disable-next-line
+    //@ts-ignore
+    Email.mockImplementation(() => {
+      return {
+        sendResetPasswordMail: jest.fn(),
+      };
+    });
+    const resetToken = 'resetToken';
+    //eslint-disable-next-line
+    //@ts-ignore
+    await sendResetPasswordMail(res, next, user, resetToken);
+
+    expect(Email).toHaveBeenCalledTimes(1);
+    expect(Email).toHaveBeenCalledWith(
+      {
+        firstName: user.name,
+        email: user.email,
+      },
+      url
+    );
+    expect(res.status).toHaveBeenCalledWith(httpCode.OK);
+  });
+
+  it('should throw an error if email not sent', async () => {
+    const { res, next } = expressMiddlewareParams;
+    const user = { name: 'John', email: 'mail@example.com' };
+    const resetToken = 'resetToken';
+
+    //eslint-disable-next-line
+    //@ts-ignore
+    Email.mockImplementation(() => {
+      return jest.fn().mockReturnValue({
+        sendResetPasswordMail: jest.fn(() => {
+          throw new Error('email not sent');
+        }),
+      });
+    });
+
+    //eslint-disable-next-line
+    //@ts-ignore
+    await sendResetPasswordMail(res, next, user, resetToken);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(HttpError).toHaveBeenCalled();
+    expect(HttpError).toHaveBeenCalledWith(
+      msgs.EMAIL_FAILURE,
+      httpCode.SERVER_ERROR
+    );
   });
 });

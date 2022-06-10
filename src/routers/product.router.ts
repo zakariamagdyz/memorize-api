@@ -4,6 +4,7 @@ import {
   deleteOneproduct,
   getAllProducts,
   getOneProduct,
+  streaming,
   updateOneProduct,
 } from '../controllers/prodcut.controller';
 import protectRoutes from '../middlewares/protectRoutes';
@@ -51,6 +52,8 @@ import { roles } from '../utils/utlities';
  */
 
 const Router = express.Router();
+
+Router.get('/streaming', streaming);
 
 Router.use(protectRoutes);
 

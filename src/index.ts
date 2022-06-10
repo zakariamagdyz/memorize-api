@@ -12,7 +12,7 @@ process.on('uncaughtException', (err) => {
 });
 
 const server = app.listen(port, '0.0.0.0', () => {
-  logger.info(`App running at http://localhost:${port}`);
+  logger.info(`Server running at http://localhost:${port}`);
   connect();
 });
 

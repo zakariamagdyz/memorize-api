@@ -8,7 +8,7 @@ const options: swaggerJsDoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'MY-Api',
+      title: 'Moment-Api',
       description: 'Moment Api with refreshToken and accessToken',
       version: 'v1',
     },
