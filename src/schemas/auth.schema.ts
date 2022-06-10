@@ -1,5 +1,79 @@
 import { string, object, TypeOf } from 'zod';
 
+/**
+ * @openapi
+ * components:
+ *  schemas:
+ *    UserInput:
+ *        type: object
+ *        required:
+ *             - name
+ *             - email
+ *             - password
+ *             - passwordConfirm
+ *        properties:
+ *            name:
+ *               type: string
+ *            email:
+ *               type: string
+ *               format: email
+ *            password:
+ *               type: string
+ *               minimum: 8
+ *               format: password
+ *            passwordConfirm:
+ *               type: string
+ *               minimum: 8
+ *               format: password
+ *
+ *    User:
+ *      type: object
+ *      properties:
+ *        _id:
+ *          type: string
+ *        name:
+ *          type: string
+ *        email:
+ *          type: string
+ *          exmaple: name@mail.com
+ *        roles:
+ *         type: array
+ *         items:
+ *           type: number
+ *         example: [2201]
+ *
+ *
+ *    SendUserCredentials:
+ *        type: object
+ *        properties:
+ *           accessToken:
+ *              type: string
+ *           user:
+ *             $ref: "#/components/schemas/User"
+ *
+ *
+ *    HttpError:
+ *        type: object
+ *        properties:
+ *           status:
+ *              type: string
+ *              example: fail
+ *           message:
+ *              type: string
+ *              example: invalid input, try again with right input
+ *    ServerError:
+ *        type: object
+ *        properties:
+ *           status:
+ *              type: string
+ *              example: error
+ *           message:
+ *              type: string
+ *              example: Something went wrong
+ *
+ *
+ */
+
 ////////////////////////////////////////////////
 // User-schema
 ///////////////////////////////////////////////

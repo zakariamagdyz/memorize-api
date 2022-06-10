@@ -274,7 +274,7 @@ export const forgotPasswordHandler = catchAsync(async (req, res, next) => {
   await sendResetPasswordMail(res, next, user, resetToken);
 });
 
-const sendResetPasswordMail = async (
+export const sendResetPasswordMail = async (
   res: Response,
   next: NextFunction,
   user: HydratedDocument<IUserDocument>,
@@ -357,3 +357,6 @@ export const updatePasswordHandler = catchAsync(async (req, res, next) => {
   // 4- generate tokens and sent it
   await createTokensByCredentials(req, res, existedUser);
 });
+////////////////////////////////////////////////
+//
+///////////////////////////////////////////////
