@@ -11,6 +11,7 @@ import {
   findUserByRT,
   replaceRTToken,
   updatePassword,
+  activateUserAccount,
 } from '../services/auth.service';
 import catchAsync from '../utils/catchAsync';
 import HttpError from '../utils/customErrors';
@@ -35,26 +36,27 @@ export const signupHandler = catchAsync(
       'password',
       'email',
     ]);
-    // 2- Check if user email is exist in DB
-    const existedUser = await findUserByEmail(filterdUserinput.email);
-    // 3- if email belongs to existed user then throw an error
-    if (existedUser) {
-      return next(new HttpError(msgs.USER_EXIST, httpCode.BAD_REQUEST));
-    }
+    // 2- Create a new user with isEmailActive false
+    const newUser = await createUser(filterdUserinput);
+
     // 4- if user not exist then send The email
-    await sendWelcomeEmail(res, next, filterdUserinput);
+    await sendWelcomeEmail(res, next, newUser);
   }
 );
 
 const sendWelcomeEmail = async (
   res: Response,
   next: NextFunction,
-  user: IUserInput
+  user: IUserDocument
 ) => {
   // 4- Create active token
-  const activateToken = jwt.sign(user, config.get('ACTIVE_TOKEN_SECRET'), {
-    expiresIn: config.get('ACTIVE_TOKEN_TTL'),
-  });
+  const activateToken = jwt.sign(
+    { userId: user._id },
+    config.get('ACTIVE_TOKEN_SECRET'),
+    {
+      expiresIn: config.get('ACTIVE_TOKEN_TTL'),
+    }
+  );
 
   const emailUrl = `${config.get(
     'CLIENT_URL'
@@ -68,11 +70,11 @@ const sendWelcomeEmail = async (
       },
       emailUrl
     ).sendWelcomeMail();
-    res.status(httpCode.OK).send(msgs.EMAIL_SUCCESS);
+    res.status(httpCode.OK).send(res.locals.t['EMAIL_SUCCESS']);
   } catch (error) {
     if (error instanceof Error) {
       logger.error(error);
-      next(new HttpError(msgs.EMAIL_FAILURE, httpCode.SERVER_ERROR));
+      next(new HttpError(res.locals.t['EMAIL_FAILURE'], httpCode.SERVER_ERROR));
     }
   }
 };
@@ -80,17 +82,24 @@ const sendWelcomeEmail = async (
 ////////////////////////////////////////////////
 // Activate-account
 ///////////////////////////////////////////////
-export const activateAccountHanlder = catchAsync(async (req, res) => {
+export const activateAccountHanlder = catchAsync(async (req, res, next) => {
   // 1 - Check for activateToken
   const { activateToken } = req.body;
   // 2- Verify jwt token we handle errors globally
-  const userData = jwt.verify(activateToken, config.get('ACTIVE_TOKEN_SECRET'));
-
-  // 3- Create a user
-  const newUser = await createUser(userData as IUserInput);
+  const { userId } = jwt.verify(
+    activateToken,
+    config.get('ACTIVE_TOKEN_SECRET')
+  ) as {
+    userId: string;
+  };
+  // 3- Activate User Email
+  const activeUser = await activateUserAccount(userId);
+  // 4- if no User found with That Id throw an error
+  if (!activeUser)
+    return next(new HttpError(res.locals.t['USER_NOT_FOUND'], 404));
 
   // 4- Generate Tokens and send user data
-  await createTokensByCredentials(req, res, newUser);
+  await createTokensByCredentials(req, res, activeUser);
 });
 
 ////////////////////////////////////////////////
@@ -162,7 +171,9 @@ export const refreshTokenHandler = catchAsync(
     const oldToken = req.cookies.jwt;
     // 1- Check if there's no token, set No credentials sent
     if (!oldToken)
-      return next(new HttpError(msgs.COOKIE_NOT_FOUND, httpCode.UNAUTHORIZED));
+      return next(
+        new HttpError(res.locals.t['COOKIE_NOT_FOUND'], httpCode.UNAUTHORIZED)
+      );
     // 2- Find user by RT
     const relatedUser = await findUserByRT(oldToken);
 
@@ -193,7 +204,9 @@ export const fireReuseDetection = async (
     // 3- Clear Cookie to not go in reuse loop
     res.clearCookie('jwt');
     // 4- return an error message
-    return next(new HttpError(msgs.COOKIE_NOT_FOUND, httpCode.UNAUTHORIZED));
+    return next(
+      new HttpError(res.locals.t['COOKIE_NOT_FOUND'], httpCode.UNAUTHORIZED)
+    );
   } catch (error) {
     if (!(error instanceof Error)) return;
 
@@ -226,7 +239,9 @@ export const handleOldRT = async (
     // Delete the old token from Cookie and DB
     await deleteRTFromDBAndCookie(res, user, oldToken);
 
-    return next(new HttpError(msgs.COOKIE_NOT_VALID, httpCode.UNAUTHORIZED));
+    return next(
+      new HttpError(res.locals.t['COOKIE_NOT_VALID'], httpCode.UNAUTHORIZED)
+    );
   }
 };
 
@@ -247,11 +262,16 @@ export const loginHandler = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
   // 2- Check if user exist in DB by email
   const existedUser = await findUserByEmail(email);
+  console.log(res.locals.t);
   if (!existedUser)
-    return next(new HttpError(msgs.LOGIN_FAILURE, httpCode.UNAUTHORIZED));
+    return next(
+      new HttpError(res.locals.t['LOGIN_FAILURE'], httpCode.UNAUTHORIZED)
+    );
   // 3- Check for password equality
   if (!(await bcrypt.compare(password, existedUser.password))) {
-    return next(new HttpError(msgs.LOGIN_FAILURE, httpCode.UNAUTHORIZED));
+    return next(
+      new HttpError(res.locals.t['LOGIN_FAILURE'], httpCode.UNAUTHORIZED)
+    );
   }
   // 4- generate ans sent tokens
   await createTokensByCredentials(req, res, existedUser);
@@ -266,7 +286,9 @@ export const forgotPasswordHandler = catchAsync(async (req, res, next) => {
   // 2- check if user exists in DB by email
   const user = await findUserByEmail(email);
   if (!user)
-    return next(new HttpError(msgs.EMAIL_NOT_FOUND, httpCode.BAD_REQUEST));
+    return next(
+      new HttpError(res.locals.t['EMAIL_NOT_FOUND'], httpCode.BAD_REQUEST)
+    );
   // 3- create Reset token with expiration data and save hashed version in DB
   const resetToken = await createResetToken(user);
 
@@ -280,7 +302,7 @@ export const sendResetPasswordMail = async (
   user: HydratedDocument<IUserDocument>,
   resetToken: string
 ) => {
-  const url = `${config.get('CLIENT_URL')}/resetPassword/${resetToken}`;
+  const url = `${config.get('CLIENT_URL')}/reset-password/${resetToken}`;
 
   try {
     new Email(
@@ -288,11 +310,13 @@ export const sendResetPasswordMail = async (
       url
     ).sendResetPasswordMail();
 
-    res.status(httpCode.OK).send(msgs.EMAIL_SUCCESS);
+    res.status(httpCode.OK).send(res.locals.t['EMAIL_SUCCESS']);
   } catch (error) {
     if (!(error instanceof Error)) return;
     await clearResetToken(user);
-    return next(new HttpError(msgs.EMAIL_FAILURE, httpCode.SERVER_ERROR));
+    return next(
+      new HttpError(res.locals.t['EMAIL_FAILURE'], httpCode.SERVER_ERROR)
+    );
   }
 };
 
@@ -311,7 +335,9 @@ export const resetPasswordHandler = catchAsync(async (req, res, next) => {
   // 3- Find hasedToken with expiration date in DB
   const user = await findUserByResetToken(hashedResetToekn);
   if (!user)
-    return next(new HttpError(msgs.RESET_TOKEN_FAILURE, httpCode.BAD_REQUEST));
+    return next(
+      new HttpError(res.locals.t['RESET_TOKEN_FAILURE'], httpCode.BAD_REQUEST)
+    );
   // 4-update password and remove resetToken and expiration date
   await updatePassword(user, password);
   // 5- generate Tokens and send to user
@@ -324,7 +350,9 @@ export const logoutHandler = catchAsync(async (req, res, next) => {
   // 1- Check for RT in cookie
   const RT = req.cookies.jwt;
   if (!RT)
-    return next(new HttpError(msgs.COOKIE_NOT_FOUND, httpCode.UNAUTHORIZED));
+    return next(
+      new HttpError(res.locals.t['COOKIE_NOT_FOUND'], httpCode.UNAUTHORIZED)
+    );
   // 2- Find user by RT
   const relatedUser = await findUserByRT(RT);
 
@@ -347,10 +375,14 @@ export const updatePasswordHandler = catchAsync(async (req, res, next) => {
   // 2- get user by it's email
   const existedUser = await findUserByEmail(res.locals?.user?.email);
   if (!existedUser)
-    return next(new HttpError(msgs.EMAIL_NOT_FOUND, httpCode.BAD_REQUEST));
+    return next(
+      new HttpError(res.locals.t['EMAIL_NOT_FOUND'], httpCode.BAD_REQUEST)
+    );
   // 3- compare two passwords
   if (!(await bcrypt.compare(currentPassword, existedUser.password))) {
-    return next(new HttpError(msgs.UPDATE_PASS_FAILURE, httpCode.BAD_REQUEST));
+    return next(
+      new HttpError(res.locals.t['UPDATE_PASS_FAILURE'], httpCode.BAD_REQUEST)
+    );
   }
   // 3- update passwords
   await updatePassword(existedUser, newPassword);

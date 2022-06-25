@@ -1,26 +1,26 @@
 import express from 'express';
 import {
-  createOneProduct,
-  deleteOneproduct,
-  getAllProducts,
-  getOneProduct,
+  createOnePost,
+  deleteOnePost,
+  getAllPosts,
+  getOnePost,
   streaming,
-  updateOneProduct,
-} from '../controllers/prodcut.controller';
+  updateOnePost,
+} from '../controllers/post.controller';
 import protectRoutes from '../middlewares/protectRoutes';
 import validate from '../middlewares/validateResource';
 import verifyRoles from '../middlewares/verifyRole';
-import { productSchema } from '../schemas/product.schema';
+import { PostSchema } from '../schemas/post.schema';
 import { roles } from '../utils/utlities';
 
 // docs
 
 /**
  * @openapi
- * /api/v1/products:
+ * /api/v1/Posts:
  *  get:
- *    description: Get all products (first 20 result for page 1) , use Page, limit, fields, sort for specific results
- *    tags: [Products]
+ *    description: Get all Posts (first 20 result for page 1) , use Page, limit, fields, sort for specific results
+ *    tags: [Posts]
  *    parameters:
  *      - name: page
  *        in: query
@@ -28,23 +28,23 @@ import { roles } from '../utils/utlities';
  *        example: 2
  *      - name: limit
  *        in: query
- *        description: limit of products per page
+ *        description: limit of Posts per page
  *        example: 8
  *      - name: fields
  *        in: query
- *        description: select some fields from products
+ *        description: select some fields from Posts
  *        example: name
  *      - name: sort
  *        in: query
- *        description: sort products by some fields
+ *        description: sort Posts by some fields
  *        example: -price
  *    responses:
  *       200:
- *         description: return first 20 products
+ *         description: return first 20 Posts
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/products"
+ *               $ref: "#/components/schemas/Posts"
  *
  *
  *
@@ -55,17 +55,13 @@ const Router = express.Router();
 
 Router.get('/streaming', streaming);
 
+//TODO: active protect middleware
 Router.use(protectRoutes);
 
-Router.route('/')
-  .get(getAllProducts)
-  .post(validate(productSchema), createOneProduct);
+Router.route('/').get(getAllPosts).post(validate(PostSchema), createOnePost);
 
-Router.use(verifyRoles(roles.Admin));
+// Router.use(verifyRoles(roles.Admin));
 
-Router.route('/:id')
-  .get(getOneProduct)
-  .patch(updateOneProduct)
-  .delete(deleteOneproduct);
+Router.route('/:id').get(getOnePost).patch(updateOnePost).delete(deleteOnePost);
 
 export default Router;

@@ -1,15 +1,15 @@
-import { number, object, string, TypeOf } from 'zod';
+import { object, string, TypeOf } from 'zod';
 
 /**
  * @openapi
  * components:
  *    schemas:
- *      product:
+ *      post:
  *         type: object
  *         properties:
- *           name:
+ *           title:
  *             type: string
- *           description:
+ *           message:
  *             type: string
  *           price:
  *            type: number
@@ -28,7 +28,7 @@ import { number, object, string, TypeOf } from 'zod';
  *            prev:
  *               type: string
  *
- *      products:
+ *      posts:
  *          type: object
  *          properties:
  *             info:
@@ -36,19 +36,19 @@ import { number, object, string, TypeOf } from 'zod';
  *             results:
  *                type: array
  *                items:
- *                  $ref: "#/components/schemas/product"
+ *                  $ref: "#/components/schemas/post"
  *
  *
  *
  *
  */
 
-export const productSchema = object({
+export const PostSchema = object({
   body: object({
-    name: string({ required_error: 'Product name is required' }),
-    description: string({ required_error: 'description is requierd' }),
-    price: number({ required_error: 'number is required' }),
+    title: string({ required_error: 'Title name is required' }),
+    message: string({ required_error: 'Message is requierd' }),
+    tags: string({ required_error: 'Tags is required' }).array(),
   }),
 });
 
-export type ProductInput = TypeOf<typeof productSchema>['body'];
+export type PostInputSchema = TypeOf<typeof PostSchema>['body'];

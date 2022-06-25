@@ -20,7 +20,24 @@ export const createUser = async (
 export const findUserByEmail = async (
   email: string
 ): Promise<HydratedDocument<IUserDocument> | null> => {
-  const user = await User.findOne({ email });
+  const user = await User.findOne({
+    email,
+    isActive: { $ne: false },
+    isEmailActive: { $ne: false },
+  });
+  if (!user) return null;
+  return user;
+};
+//////////////////////////////////////////
+// Activate User
+//////////////////////////////////////////
+export const activateUserAccount = async (id: string) => {
+  const user = await User.findByIdAndUpdate(
+    id,
+    { isEmailActive: true },
+    { new: true }
+  );
+
   if (!user) return null;
   return user;
 };

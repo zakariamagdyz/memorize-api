@@ -6,7 +6,8 @@ export const msgs = {
   COOKIE_NOT_FOUND: 'No credentials sent!',
   COOKIE_NOT_VALID: 'Invalid credentials, please login again',
   NO_ACTIVATION_TOKEN: 'There is no activation token, Please check your inbox',
-  EMAIL_NOT_FOUND: 'No user fount with that email',
+  EMAIL_NOT_FOUND: 'No user found with that email',
+  USER_NOT_FOUND: 'NO user found with that ID',
   USER_EXIST:
     'This user already exist, visit /forgotpassword to reset your password.',
   RESET_TOKEN_FAILURE: 'Invalid or expired token',

@@ -22,11 +22,11 @@ export default class ApiFeatures<T> {
 
   sorting() {
     if (!this.queryString.sort) {
-      this.query = this.query.sort('-_id');
+      this.query = this.query.sort('-updatedAt');
       return this;
     }
     if (!(typeof this.queryString.sort === 'string')) {
-      this.query = this.query.sort('-_id');
+      this.query = this.query.sort('-updatedAt');
       return this;
     }
     const sortedFields = this.queryString.sort.split(',').join(' ');

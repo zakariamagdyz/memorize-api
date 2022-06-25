@@ -11,7 +11,8 @@ export interface IUserForTest {
 
 export interface IUserDocument extends IUserInput {
   _id: ObjectId;
-  active: boolean;
+  isActive: boolean;
+  isEmailActive: boolean;
   passwordResetToken?: string;
   passwordResetTokenExpiration?: Date;
   roles: { user: number; admin: number };
@@ -25,4 +26,17 @@ export interface IUserInput {
   name: string;
   email: string;
   password: string;
+}
+
+// Posts
+
+export interface IPostDocument {
+  title: string;
+  message: string;
+  creator: string;
+  tags: string[];
+  selectedFile: string;
+  likeCount: number;
+  createdAt: Date;
+  updatedAt: Date;
 }

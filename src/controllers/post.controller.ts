@@ -1,11 +1,11 @@
 import { Response } from 'express';
 import {
-  createAProductHandler,
-  deleteOneProductHandler,
-  getAllProductsHandler,
-  getOneProductHandler,
-  updateAProductHandler,
-} from '../services/product.service';
+  createAPostHanlder,
+  deleteAPostHandler,
+  getAllPostsHandler,
+  getAPostHandler,
+  updateAPostHandler,
+} from '../services/post.service';
 import catchAsync from '../utils/catchAsync';
 import {
   createOneHandler,
@@ -15,11 +15,11 @@ import {
   updateOneHandler,
 } from '../utils/factoryControllers';
 
-export const getAllProducts = getAllHandler(getAllProductsHandler);
-export const getOneProduct = getOneHandler(getOneProductHandler);
-export const createOneProduct = createOneHandler(createAProductHandler);
-export const updateOneProduct = updateOneHandler(updateAProductHandler);
-export const deleteOneproduct = deleteOneHandler(deleteOneProductHandler);
+export const getAllPosts = getAllHandler(getAllPostsHandler);
+export const getOnePost = getOneHandler(getAPostHandler);
+export const createOnePost = createOneHandler(createAPostHanlder);
+export const updateOnePost = updateOneHandler(updateAPostHandler);
+export const deleteOnePost = deleteOneHandler(deleteAPostHandler);
 
 // SSE emplementation
 export const streaming = catchAsync(async (req, res) => {

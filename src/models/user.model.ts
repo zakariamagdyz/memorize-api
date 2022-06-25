@@ -14,7 +14,8 @@ const userSchema = new mongoose.Schema(
       admin: Number,
     },
     refreshTokens: [String],
-    active: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: true },
+    isEmailActive: { type: Boolean, default: false },
     passwordResetToken: String,
     passwordResetTokenExpiration: Date,
   },
@@ -39,9 +40,9 @@ userSchema.pre(
   }
 );
 
-userSchema.pre(/^find/, function (next) {
-  this.find({ active: { $ne: false } });
-  next();
-});
+// userSchema.pre(/^find/, function (next) {
+//   this.find({ isActive: { $ne: false }, isEmailActive: { $ne: false } });
+//   next();
+// });
 
 export default mongoose.model<IUserDocument>('User', userSchema);
