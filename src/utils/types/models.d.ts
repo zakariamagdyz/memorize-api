@@ -10,7 +10,7 @@ export interface IUserForTest {
 }
 
 export interface IUserDocument extends IUserInput {
-  _id: ObjectId;
+  _id: ObjectId | string;
   isActive: boolean;
   isEmailActive: boolean;
   passwordResetToken?: string;
@@ -35,7 +35,7 @@ export interface IPostDocument {
   message: string;
   creator: string;
   tags: string[];
-  selectedFile: string;
+  image: string;
   likeCount: number;
   createdAt: Date;
   updatedAt: Date;

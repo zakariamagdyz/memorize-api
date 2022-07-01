@@ -47,7 +47,7 @@ export const PostSchema = object({
   body: object({
     title: string({ required_error: 'Title name is required' }),
     message: string({ required_error: 'Message is requierd' }),
-    tags: string({ required_error: 'Tags is required' }).array(),
+    tags: string({ required_error: 'Tags is required' }),
   }),
 });
 

@@ -1,6 +1,6 @@
 import catchAsync from '../utils/catchAsync';
 import HttpError from '../utils/customErrors';
-import { httpCode, msgs } from '../utils/utlities';
+import { httpCode } from '../utils/utlities';
 import config from 'config';
 import jwt from 'jsonwebtoken';
 
@@ -9,7 +9,9 @@ const protectRoutes = catchAsync(async (req, res, next) => {
   const authHeader = req.headers.authorization || req.headers.Authorization;
   // 2- Check for AT validatiaon
   if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer')) {
-    return next(new HttpError(msgs.NOT_LOGGED_IN, httpCode.UNAUTHORIZED));
+    return next(
+      new HttpError(res.locals.t['NOT_LOGGED_IN'], httpCode.UNAUTHORIZED)
+    );
   }
   // 3- Verify AT
   try {
@@ -25,7 +27,7 @@ const protectRoutes = catchAsync(async (req, res, next) => {
     if (!(error instanceof Error) || error.name !== 'TokenExpiredError')
       throw error;
     // if AT expired return upgrade token error
-    return next(new HttpError(msgs.UPGRADE_AT, httpCode.UPGRADE_AT));
+    return next(new HttpError(res.locals.t['UPGRADE_AT'], httpCode.UPGRADE_AT));
   }
 });
 

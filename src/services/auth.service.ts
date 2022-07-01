@@ -41,6 +41,12 @@ export const activateUserAccount = async (id: string) => {
   if (!user) return null;
   return user;
 };
+//////////////////////////////////////////
+// Delete User
+//////////////////////////////////////////
+export const deleteUserFromDB = async (id: string) => {
+  await User.findByIdAndDelete(id);
+};
 
 //////////////////////////////////////////
 // Find user by Refresh token

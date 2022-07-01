@@ -34,7 +34,11 @@ describe('findUserByEmail', () => {
     await findUserByEmail(user.email);
 
     expect(User.findOne).toHaveBeenCalledTimes(1);
-    expect(User.findOne).toHaveBeenCalledWith({ email: user.email });
+    expect(User.findOne).toHaveBeenCalledWith({
+      email: user.email,
+      isActive: { $ne: false },
+      isEmailActive: { $ne: false },
+    });
   });
 
   it('should return null if user does not exist', async () => {
@@ -45,7 +49,11 @@ describe('findUserByEmail', () => {
     const result = await findUserByEmail(user.email);
 
     expect(User.findOne).toHaveBeenCalledTimes(1);
-    expect(User.findOne).toHaveBeenCalledWith({ email: user.email });
+    expect(User.findOne).toHaveBeenCalledWith({
+      email: user.email,
+      isActive: { $ne: false },
+      isEmailActive: { $ne: false },
+    });
     expect(result).toBeNull();
   });
 });

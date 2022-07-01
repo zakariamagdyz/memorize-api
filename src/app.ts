@@ -17,7 +17,12 @@ app.use(express.json({ limit: '30mb' }));
 app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
-app.use(express.static(__dirname + '/public'));
+
+// aserve post images
+app.use(
+  '/public/posts',
+  express.static(__dirname + '/..' + '/public/img/posts')
+);
 
 // Api Docs
 swagger(app);

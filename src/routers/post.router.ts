@@ -1,11 +1,14 @@
-import express from 'express';
+import express, { Request } from 'express';
 import {
+  configurePostBody,
   createOnePost,
   deleteOnePost,
   getAllPosts,
   getOnePost,
+  resizePostImage,
   streaming,
   updateOnePost,
+  uploadPostImage,
 } from '../controllers/post.controller';
 import protectRoutes from '../middlewares/protectRoutes';
 import validate from '../middlewares/validateResource';
@@ -58,9 +61,17 @@ Router.get('/streaming', streaming);
 //TODO: active protect middleware
 Router.use(protectRoutes);
 
-Router.route('/').get(getAllPosts).post(validate(PostSchema), createOnePost);
+Router.route('/')
+  .get(getAllPosts)
+  .post(
+    uploadPostImage,
+    validate(PostSchema),
+    configurePostBody,
+    resizePostImage,
+    createOnePost
+  );
 
-// Router.use(verifyRoles(roles.Admin));
+Router.use(verifyRoles(roles.Admin));
 
 Router.route('/:id').get(getOnePost).patch(updateOnePost).delete(deleteOnePost);
 

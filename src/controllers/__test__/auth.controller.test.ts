@@ -81,13 +81,18 @@ describe('signup handler', () => {
     Email.mockImplementation(() => ({
       sendWelcomeMail: jest.fn().mockReturnValue(2),
     }));
+    //eslint-disable-next-line
+    //@ts-ignore
+    authService.createUser.mockResolvedValue({
+      _id: '12',
+      name: 'zakaria',
+      email: 'zakaria@gmail.com',
+    });
 
     //eslint-disable-next-line
     //@ts-ignore
     await signupHandler(req, res, next);
 
-    expect(authService.findUserByEmail).toHaveBeenCalledTimes(1);
-    expect(authService.findUserByEmail).toHaveBeenCalledWith(req.body.email);
     expect(jwt.sign).toHaveBeenCalledTimes(1);
     expect(Email).toHaveBeenCalledTimes(1);
     expect(Email).toHaveBeenCalledWith(
@@ -106,14 +111,21 @@ describe('signup handler', () => {
     Email.mockImplementation(() => ({
       sendWelcomeMail: jest.fn().mockRejectedValue(new Error('Async error')),
     }));
+    //eslint-disable-next-line
+    //@ts-ignore
+    authService.createUser.mockResolvedValue({
+      _id: '12',
+      name: 'zakaria',
+      email: 'zakaria@gmail.com',
+    });
 
     //eslint-disable-next-line
     //@ts-ignore
     await signupHandler(req, res, next);
 
-    expect(authService.findUserByEmail).toHaveBeenCalledTimes(1);
-    expect(authService.findUserByEmail).toHaveBeenCalledWith(req.body.email);
+    expect(authService.createUser).toHaveBeenCalledTimes(1);
     expect(jwt.sign).toHaveBeenCalledTimes(1);
+    expect(authService.deleteUserFromDB).toHaveBeenCalled();
 
     expect(HttpError).toHaveBeenCalledTimes(1);
     expect(HttpError).toHaveBeenCalledWith(msgs.EMAIL_FAILURE, 500);

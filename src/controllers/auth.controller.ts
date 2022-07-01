@@ -12,18 +12,19 @@ import {
   replaceRTToken,
   updatePassword,
   activateUserAccount,
+  deleteUserFromDB,
 } from '../services/auth.service';
 import catchAsync from '../utils/catchAsync';
 import HttpError from '../utils/customErrors';
-import { msgs, httpCode, selectFields } from '../utils/utlities';
+import { httpCode, selectFields } from '../utils/utlities';
 import config from 'config';
 import jwt from 'jsonwebtoken';
 import Email from '../utils/Email';
-import logger from '../utils/logger';
 import { IUserDocument, IUserInput } from '../utils/types/models';
 import { HydratedDocument } from 'mongoose';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import WinstonLogger from '../utils/loggerService';
 
 ////////////////////////////////////////////////
 // Sign-up
@@ -37,7 +38,13 @@ export const signupHandler = catchAsync(
       'email',
     ]);
     // 2- Create a new user with isEmailActive false
-    const newUser = await createUser(filterdUserinput);
+    let newUser: HydratedDocument<IUserDocument>;
+    try {
+      newUser = await createUser(filterdUserinput);
+    } catch (error) {
+      // throw specefic error insted of rely on global error middleware
+      return next(new HttpError(res.locals.t['USER_EXIST'], 400));
+    }
 
     // 4- if user not exist then send The email
     await sendWelcomeEmail(res, next, newUser);
@@ -72,8 +79,9 @@ const sendWelcomeEmail = async (
     ).sendWelcomeMail();
     res.status(httpCode.OK).send(res.locals.t['EMAIL_SUCCESS']);
   } catch (error) {
+    // if user didn't recieve the message, we must delete user from DB instead user will not able to signup again
     if (error instanceof Error) {
-      logger.error(error);
+      await deleteUserFromDB(user._id as string);
       next(new HttpError(res.locals.t['EMAIL_FAILURE'], httpCode.SERVER_ERROR));
     }
   }
@@ -203,6 +211,8 @@ export const fireReuseDetection = async (
 
     // 3- Clear Cookie to not go in reuse loop
     res.clearCookie('jwt');
+
+    new WinstonLogger('dev-errors').error('HackedUser', decoded.email);
     // 4- return an error message
     return next(
       new HttpError(res.locals.t['COOKIE_NOT_FOUND'], httpCode.UNAUTHORIZED)
@@ -262,7 +272,6 @@ export const loginHandler = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
   // 2- Check if user exist in DB by email
   const existedUser = await findUserByEmail(email);
-  console.log(res.locals.t);
   if (!existedUser)
     return next(
       new HttpError(res.locals.t['LOGIN_FAILURE'], httpCode.UNAUTHORIZED)
