@@ -82,7 +82,7 @@ describe('ApiFeatures', () => {
     it("should sort by decrement if sort query doesn't exist", () => {
       const queryReq = { price: 99 };
       new ApiFeatures(Query, queryReq).sorting();
-      expect(Query.state.sort).toMatch('-updatedAt');
+      expect(Query.state.sort).toMatch('-createdAt');
     });
 
     it('should sort by single value if exist', () => {
@@ -100,7 +100,7 @@ describe('ApiFeatures', () => {
     it('should ignore sort with type array ', () => {
       const queryReq = { sort: ['page', 'age'] } as unknown as { sort: string };
       new ApiFeatures(Query, queryReq).sorting();
-      expect(Query.state.sort).toMatch('-updatedAt');
+      expect(Query.state.sort).toMatch('-createdAt');
     });
   });
 

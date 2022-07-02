@@ -5,10 +5,12 @@ import {
   deleteOnePost,
   getAllPosts,
   getOnePost,
+  likeHandler,
   resizePostImage,
   streaming,
   updateOnePost,
   uploadPostImage,
+  verifyUserForAction,
 } from '../controllers/post.controller';
 import protectRoutes from '../middlewares/protectRoutes';
 import validate from '../middlewares/validateResource';
@@ -66,13 +68,23 @@ Router.route('/')
   .post(
     uploadPostImage,
     validate(PostSchema),
-    configurePostBody,
+    configurePostBody('forCreate'),
     resizePostImage,
     createOnePost
   );
 
-Router.use(verifyRoles(roles.Admin));
+//Router.use(verifyRoles(roles.Admin));
+Router.patch('/:id/like', likeHandler);
 
-Router.route('/:id').get(getOnePost).patch(updateOnePost).delete(deleteOnePost);
+Router.route('/:id')
+  .get(getOnePost)
+  .patch(
+    uploadPostImage,
+    configurePostBody('forUpdate'),
+    resizePostImage,
+    verifyUserForAction,
+    updateOnePost
+  )
+  .delete(verifyUserForAction, deleteOnePost);
 
 export default Router;

@@ -8,13 +8,11 @@ const schema = new mongoose.Schema<IPostDocument>(
     creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     tags: [String],
     image: String,
-    likeCount: {
-      type: Number,
-      default: 0,
-    },
+    likeCount: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   },
   {
     timestamps: true,
+    minimize: false,
   }
 );
 

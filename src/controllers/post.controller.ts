@@ -11,13 +11,13 @@ import {
   createOneHandler,
   getAllHandler,
   getOneHandler,
-  updateOneHandler,
 } from '../utils/factoryControllers';
 import multer, { FileFilterCallback } from 'multer';
 import sharp from 'sharp';
 import HttpError from '../utils/customErrors';
 import * as fs from 'fs/promises';
-import path from 'path';
+import path, { resolve } from 'path';
+import { roles } from '../utils/utlities';
 //////////////////////////////////////////
 
 const multerStorage = multer.memoryStorage();
@@ -55,18 +55,75 @@ export const resizePostImage = catchAsync(async (req, res, next) => {
   return next();
 });
 
-export const configurePostBody = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  // Check for image
-  if (!req.file)
-    return next(new HttpError('image is required to create a memory', 400));
-  req.body.creator = res.locals.user._id;
-  req.body.tags = req.body.tags.split(',');
-  next();
-};
+export const configurePostBody =
+  (type: 'forUpdate' | 'forCreate') =>
+  (req: Request, res: Response, next: NextFunction) => {
+    // Check for image
+    if (type === 'forCreate' && !req.file) {
+      return next(new HttpError('image is required to create a memory', 400));
+    }
+    req.body.creator = res.locals.user._id;
+
+    if (req.body.tags) {
+      req.body.tags = req.body.tags.split(',');
+    }
+    next();
+  };
+
+export const verifyUserForAction = catchAsync(async (req, res, next) => {
+  const post = await getAPostHandler({ elementId: req.params.id });
+  // Check if user is a creator of the post Or user is an admin
+  if (
+    res.locals.user._id === post.creator._id.toString() ||
+    res.locals.user.roles.includes(roles.Admin)
+  ) {
+    next();
+  } else {
+    return next(
+      new HttpError("You Don't have permission to perform this action", 403)
+    );
+  }
+});
+
+export const likeHandler = catchAsync(async (req, res, next) => {
+  const post = await getAPostHandler({ elementId: req.params.id });
+  const isUserliked = post.likeCount.some(
+    (id) => id.toString() === res.locals.user._id
+  );
+
+  if (isUserliked) {
+    //eslint-disable-next-line
+    //@ts-ignore
+    post.likeCount.pull(res.locals.user._id);
+  } else {
+    post.likeCount.push(res.locals.user._id);
+  }
+  const newPost = await post.save();
+  res.status(200).send(newPost);
+});
+
+export const getAllPosts = getAllHandler(getAllPostsHandler);
+export const getOnePost = getOneHandler(getAPostHandler);
+export const createOnePost = createOneHandler(createAPostHanlder);
+export const updateOnePost = catchAsync(async (req, res) => {
+  // delete an old image if user attach it with body
+  if (req.file) {
+    const oldPost = await getAPostHandler({ elementId: req.params.id });
+
+    if (oldPost.image) {
+      await fs.unlink(
+        path.join(__dirname, '/../..', '/public/img/posts', oldPost.image)
+      );
+    }
+  }
+
+  const post = await updateAPostHandler({
+    elementId: req.params.id,
+    body: req.body,
+  });
+
+  res.status(200).json(post);
+});
 
 export const deleteOnePost = catchAsync(async (req, res) => {
   const post = await deleteAPostHandler({ elementId: req.params.id });
@@ -78,11 +135,6 @@ export const deleteOnePost = catchAsync(async (req, res) => {
   }
   res.sendStatus(204);
 });
-
-export const getAllPosts = getAllHandler(getAllPostsHandler);
-export const getOnePost = getOneHandler(getAPostHandler);
-export const createOnePost = createOneHandler(createAPostHanlder);
-export const updateOnePost = updateOneHandler(updateAPostHandler);
 
 // SSE emplementation
 export const streaming = catchAsync(async (req, res) => {

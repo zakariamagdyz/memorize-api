@@ -33,10 +33,13 @@ export interface IUserInput {
 export interface IPostDocument {
   title: string;
   message: string;
-  creator: string;
+  creator: {
+    _id: ObjectId;
+    name: string;
+  };
   tags: string[];
   image: string;
-  likeCount: number;
+  likeCount: [ObjectId];
   createdAt: Date;
   updatedAt: Date;
 }
